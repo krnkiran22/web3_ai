@@ -1,0 +1,60 @@
+  2025-07-29T08:57:07.120212Z  INFO alith_interface::requests::completion::request: 
+CompletionRequest:
+  total_prompt_tokens: 33
+  messages:
+
+[1mSystem[0m:
+"You are a helpful AI assistant. Be friendly and provide concise answers."
+
+[1mUser[0m:
+"Why did my NFT trade fail?"
+
+  stop_sequences: []
+  grammar_string: None
+  config: 
+    model_ctx_size: 8192
+    inference_ctx_size: 4096
+    requested_response_tokens: Some(4076)
+    actual_request_tokens: Some(4076)
+    frequency_penalty: None
+    presence_penalty: 0.0
+    temperature: 1.0
+    top_p: None
+    retry_after_fail_n_times: 3
+    increase_limit_on_fail: false
+    cache_prompt: false
+  tools: []
+    at crates\interface\src\requests\completion\request.rs:93
+
+  2025-07-29T08:57:20.758550Z  INFO alith_interface::requests::completion::request: 
+CompletionResponse:
+    content: "Sorry to hear that your NFT trade failed!\n\nThere could be several reasons why your NFT trade didn't go through. Here are some common issues to check:\n\n1. **Insufficient funds**: Make sure you have enough cryptocurrency (e.g., Ethereum) in your wallet to complete the trade.\n2. **Incorrect wallet address**: Double-check that you've entered the correct wallet address for the buyer or seller.\n3. **NFT not approved for sale**: Ensure that the NFT has been approved for sale by the creator or owner.\n4. **Network congestion**: High network traffic might cause transactions to fail. Try retrying the trade when the network is less busy.\n5. **Smart contract issues**: There might be an issue with the smart contract governing the NFT trade. Contact the NFT marketplace or developer for support.\n6. **Wallet connectivity issues**: Check that your wallet is properly connected to the NFT marketplace or platform.\n\nIf you've checked all of these and still can't identify the issue, feel free to provide more details, and I'll do my best to help you troubleshoot!"
+    finish_reason: Eos
+    generation_settings: 
+    model: "llama3-70b-8192"
+    frequency_penalty: None
+    presence_penalty: 0.0
+    temperature: 1.0
+    top_p: None
+    n_choices: 1
+    n_predict: Some(4076)
+    n_ctx: 4096
+    logit_bias: None
+    grammar: None
+    stop_sequences: []
+    timing_usage: 
+    total_time: 13.6394698s
+    prompt_processing_t: None
+    generation_t: None
+    prompt_tok_per_ms: None
+    prompt_tok_per_sec: None
+    generation_tok_per_ms: None
+    generation_tok_per_sec: None
+    token_usage: 
+    tokens_cached: None
+    prompt_tokens: 37
+    completion_tokens: 225
+    total_tokens: 262
+    token_calls: None
+    at crates\interface\src\requests\completion\request.rs:111
+
