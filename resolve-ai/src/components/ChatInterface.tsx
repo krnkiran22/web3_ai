@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { agent } from '../utils/aiAgent';
 import { blockchainService } from '../utils/blockchain';
 
 export interface Message {
@@ -14,28 +13,62 @@ interface ChatInterfaceProps {
   onAnalyzeTransaction?: (txHash: string) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  onAnalyzeTransaction
-}) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAnalyzeTransaction }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m your Web3 dispute resolution assistant powered by Alith. I can help you analyze transactions, investigate NFT trades, and resolve DeFi issues. How can I assist you today?',
+      content: "Hello! I'm your Web3 dispute resolution assistant powered by Alith. I can help you analyze transactions, investigate NFT trades, and resolve DeFi issues. How can I assist you today?",
       sender: 'ai',
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Get a client_id from backend and open WebSocket
+  useEffect(() => {
+    fetch('http://localhost:8000/start_chat')
+      .then((res) => res.json())
+      .then((data) => {
+        const ws = new WebSocket(`ws://localhost:8000/ws?client_id=${data.client_id}`);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              content: event.data,
+              sender: 'ai',
+              timestamp: new Date(),
+            },
+          ]);
+          setIsLoading(false);
+        };
+
+        ws.onerror = () => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              content: 'Error communicating with AI backend.',
+              sender: 'ai',
+              timestamp: new Date(),
+            },
+          ]);
+          setIsLoading(false);
+        };
+      });
+
+    return () => {
+      wsRef.current?.close();
+    };
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const extractTransactionHash = (text: string): string | null => {
@@ -59,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || !wsRef.current) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -68,60 +101,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputValue;
-    setInputValue('');
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    try {
-      // Check if message contains a transaction hash
-      const txHash = extractTransactionHash(currentInput);
-      let contextualMessage = currentInput;
+    let contextualMessage = inputValue;
+    const txHash = extractTransactionHash(inputValue);
 
-      if (txHash) {
-        // Fetch transaction info from blockchain
-        const txInfo = await blockchainService.getTransactionInfo(txHash);
-        if (txInfo) {
-          const formattedTxInfo = formatTransactionInfo(txInfo);
-          contextualMessage = `${currentInput}\n\n${formattedTxInfo}`;
-          
-          // Trigger transaction analysis callback if provided
-          onAnalyzeTransaction?.(txHash);
-        }
+    if (txHash) {
+      const txInfo = await blockchainService.getTransactionInfo(txHash);
+      if (txInfo) {
+        const formattedTxInfo = formatTransactionInfo(txInfo);
+        contextualMessage = `${inputValue}\n\n${formattedTxInfo}`;
+        onAnalyzeTransaction?.(txHash);
       }
-
-      // Add conversation context to the message
-      const recentMessages = messages.slice(-4); // Get last 4 messages for context
-      if (recentMessages.length > 0) {
-        const conversationContext = recentMessages
-          .map(msg => `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
-          .join('\n');
-        contextualMessage = `Previous conversation:\n${conversationContext}\n\nNew message: ${contextualMessage}`;
-      }
-
-      // Use Alith agent.prompt method
-      const aiResponse = await agent.prompt(contextualMessage);
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: aiResponse,
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Alith Agent Error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error while processing your request. Please check your API key and try again.',
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
     }
+
+    // Add conversation context to the message
+    const recentMessages = messages.slice(-4);
+    if (recentMessages.length > 0) {
+      const conversationContext = recentMessages
+        .map(msg => `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .join('\n');
+      contextualMessage = `Previous conversation:\n${conversationContext}\n\nNew message: ${contextualMessage}`;
+    }
+
+    wsRef.current.send(contextualMessage);
+    setInputValue('');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -207,7 +212,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="p-4 border-t border-gray-700 bg-gray-900">
         <div className="flex space-x-3">
           <input
-            ref={inputRef}
+            ref={null}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
